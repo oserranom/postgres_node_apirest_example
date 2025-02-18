@@ -19,21 +19,31 @@ router.get('/users/:id', async (req, res) => {
     res.json(rows); 
 }); 
 
-router.post('/users', (req, res) => {
-    res.send('Creando user'); 
+router.post('/users', async (req, res) => {
+    const data = req.body; 
+    //Sintaxis POSTGRES (evita SQL injection) 
+    const {rows} = await pool.query(`INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *`, [data.name, data.email]);
+    return res.json(rows[0]); 
 }); 
 
 router.delete('/users/:id', async (req, res) => {
     const {id} = req.params; 
-    const {rows, rowCount} = await pool.query(`DELETE FROM users WHERE id = ${id}`); 
+    const { rowCount } = await pool.query(`DELETE FROM users WHERE id = $1`, [id]); 
     //Se requiere rowCount y no rows.length debido a que en delete row.length siempre es 0
     if(rowCount === 0) return res.status(404).json({message: "User not found"}); 
-    res.json(`Usuario ${rows.name} eliminado`); 
+    return res.status(200).json({message: 'User deleted'}); 
+
 }); 
 
-router.put('/users/:id', (req, res) =>{
+router.put('/users/:id', async (req, res) =>{
     const {id} = req.params; 
-    res.send("Actualizando usuario " + id); 
+    const data = req.body;
+
+    const { rows } = await pool.query(
+        'UPDATE users SET name = $1, email = $2 WHERE id = $3 RETURNING *', 
+        [data.name, data.email, id]);
+
+    return res.json(rows[0]); 
 });
 
 export default router; 
